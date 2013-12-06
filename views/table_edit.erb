@@ -1,0 +1,10 @@
+<form action="<%= R(TableCreate) %>" method="POST">
+    Game:
+    <select name="game">
+        <% @games.each do |game| %>
+        <option value="<%= game.id %>"><%== game.name %></option>
+        <% end %>
+    </select>
+    <input type="Submit" name="Create" value="Create"></input>
+</form>
+

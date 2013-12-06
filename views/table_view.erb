@@ -1,0 +1,18 @@
+Game: <%== @table.game.name %><br />
+Start time: <%= @table.created_at %><br />
+Players:
+<ul>
+    <% @players.each do |p| %>
+        <li><%== p.handle %></li>
+    <% end %>
+</ul>
+Add Player:
+<form action="<%= R(TableAddPlayer) %>" method="POST">
+    <input type="hidden" name="table_id" value="<%= @table.id %>"></input>
+    <select name="user">
+        <% @all_players.each do |player| %>
+        <option value="<%= player.id %>"><%== player.handle %></option>
+        <% end %>
+    </select>
+    <input type="submit" name="Add" value="Add"></input>
+</form>

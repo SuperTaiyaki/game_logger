@@ -1,0 +1,9 @@
+<form action="<%= R(UserCreate) %>" method="post">
+<% if @user.id %>
+    <input  type="hidden" name="id" value="<%== @user.id%>"></input>
+<% end %>
+    Name: <input type="text" name="name" value="<%== @user.name %>"></input><br />
+    Handle: <input type="text" name="handle" value="<%== @user.handle %>"></input><br />
+    <input type="submit" name="Save" value="Save"></input>
+</form>
+

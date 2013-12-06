@@ -1,0 +1,8 @@
+<form action="<%= R(GameCreate) %>" method="post">
+    <% if @game.id %>
+        <input type="hidden" name="id" value="<%== @game.id %>"></input>
+    <% end %>
+    Name: <input type="text" name="name" value="<%== @game.name %>"></input><br />
+    <input type="submit" name="Submit" value="Submit"></input>
+</form>
+
