@@ -14,6 +14,7 @@
 <body>
 <%= yield %>
 <p><a href="<%= R(Index) %>">Home</a></p>
+Current state: <%== is_admin ? "Admin" : "User" %><br />
 </body>
 </html>
 

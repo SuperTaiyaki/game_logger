@@ -1,3 +1,6 @@
+
+<% if is_admin %>
+
 <a href="<%= R(TableCreate) %>">New table</a><br />
 
 Tables:
@@ -24,6 +27,10 @@ Games:
 
 </ul>
 <a href="<%= R(GameCreate) %>">Create new</a><br />
+<% end %>
 
 <a href="<%= R(GameRanking) %>">Game Rankings</a><br />
 <a href="<%= R(GameFilter) %>">Activity List </a><br />
+<br />
+<br />
+<a href="<%= R(Login) %>">Login</a> <a href="<%= R(Logout) %>">Logout</a>

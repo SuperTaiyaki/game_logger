@@ -3,12 +3,14 @@
 require 'erubis'
 require 'tilt/erubis'
 require 'cgi' # HTTP url parsing
+require 'camping/session'
 
 Camping.goes :Members
 module Members
     set :views, File.dirname(__FILE__) + '/views'
+    set :secret, "notreallysecret"
+    include Camping::Session
 end
-
 
 module Members::Models
     # Enable the SQL logging
@@ -63,8 +65,8 @@ module Members::Models
                 t.integer :user_id
             end
 
-            User.create(:name => "Test Player", :handle => "Haaandle")
-            Game.create(:name => "Test game")
+            #User.create(:name => "Test Player", :handle => "Haaandle")
+            #Game.create(:name => "Test game")
         end
 
         def self.down
@@ -77,6 +79,8 @@ module Members::Models
 end
 
 module Members::Controllers
+
+
     class Index < R '/'
         def get
 
@@ -110,16 +114,21 @@ module Members::Controllers
     end
     class UserEditN
         def get(id)
+            admin_check
             @user = User.find(id)
             render :member_edit
         end
     end
     class UserCreate
         def get
+            admin_check
+
             @user = User.new()
             render :member_edit
         end
         def post
+            admin_check
+
             if @input.id
                 user = User.find(@input.id)
             else
@@ -140,16 +149,21 @@ module Members::Controllers
     end
     class GameEditN
         def get(id)
+            admin_check
+
             @game = Game.find(id)
             render :game_edit
         end
     end
     class GameCreate
+
         def get()
+            admin_check2
             @game = Game.new()
             render :game_edit
         end
         def post()
+            admin_check
             if @input.id
                 game = Game.find(@input.id)
             else
@@ -161,6 +175,7 @@ module Members::Controllers
         end
     end
 
+    # Maybe this needs to be authenticated too?
     class TableViewN
         def get(id)
             @table = History.find(id)
@@ -171,11 +186,15 @@ module Members::Controllers
     end
     class TableCreate
         def get()
+            admin_check
+
             @table = History.new()
             @games = Game.all()
             render :table_edit
         end
         def post()
+            admin_Check
+
             if @input.id
                 table = History.find(@input.id)
             else
@@ -191,6 +210,7 @@ module Members::Controllers
     end
     class TableEditN
         def get(id)
+            admin_check
             # TODO: Link up the currently active game and players
             @table = History.find(id)
             @games = Game.all()
@@ -199,6 +219,7 @@ module Members::Controllers
     end
     class TableAddPlayer
         def post()
+            admin_check
             Player.create(:history_id => @input.table_id, :user_id => @input.user)
             redirect TableViewN, @input.table_id
         end
@@ -268,9 +289,45 @@ module Members::Controllers
         end
     end
 
+    class Login
+        def get()
+            @state['admin'] = true
+            redirect Index
+        end
+    end
+    class Logout
+        def get()
+            @state.delete('admin')
+            redirect Index
+        end
+    end
+
+
+end
+module Members::Helpers
+    def admin_check
+        # Huh, @state doesn't refer to anything at this point, and yet it works?
+        if !@state.has_key?('admin')
+            # TODO: Some sort of error message
+            redirect Index
+            throw :halt
+        end
+    end
+
+    # To be called from the templates
+    def is_admin
+        @state.has_key?('admin')
+    end
+
+    # Could define the erb 'h' here too, apparently
 end
 
+
 module Members::Views
+    #def layout(&block)
+    #    @is_admin = @state.has_key?('admin')
+    #    render :layout_html, &block
+    #end
 end
 
 def Members.create
