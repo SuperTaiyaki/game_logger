@@ -7,7 +7,7 @@ Tables:
 <ul>
     <% @tables.each do |table| %>
 
-        <li><a href="<%= R(TableViewN, table.id) %>"><%== table.game.name %> - <%== table.created_at %></a></li>
+        <li><a href="<%= R(TableViewN, table.id) %>"><%== table.game.name %> - <%== ts table.created_at %></a></li>
     </li>
     <% end %>
 </ul>

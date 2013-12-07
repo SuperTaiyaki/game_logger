@@ -1,5 +1,5 @@
 Game: <%== @table.game.name %><br />
-Start time: <%= @table.created_at %><br />
+Start time: <%= ts @table.created_at %><br />
 Players:
 <ul>
     <% @players.each do |p| %>

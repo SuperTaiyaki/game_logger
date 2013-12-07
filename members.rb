@@ -13,6 +13,9 @@ module Members
 end
 
 module Members::Models
+    # Why does Osaka get an entry?
+    # For now, this causes .created_at to become Nil
+    # Base.default_timezone = 'Osaka'
     # Enable the SQL logging
     Base.logger = Logger.new(STDOUT)
     Base.clear_active_connections!
@@ -79,7 +82,6 @@ module Members::Models
 end
 
 module Members::Controllers
-
 
     class Index < R '/'
         def get
@@ -307,7 +309,7 @@ end
 module Members::Helpers
     def admin_check
         # Huh, @state doesn't refer to anything at this point, and yet it works?
-        if !@state.has_key?('admin')
+        if !is_admin
             # TODO: Some sort of error message
             redirect Index
             throw :halt
@@ -319,7 +321,11 @@ module Members::Helpers
         @state.has_key?('admin')
     end
 
-    # Could define the erb 'h' here too, apparently
+    def ts(time)
+        time.localtime.strftime("%Y-%m-%d %H:%M")
+    end
+
+    # Could define the erb 'h' here too, apparently, and remove the dependency on erubis
 end
 
 

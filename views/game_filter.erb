@@ -27,7 +27,7 @@ Entries: <%== @count %>
 <table>
     <tr><th>Game</th><th>Time</th><th>Players</th></tr>
     <% @games.each do |game| %>
-        <tr><td><%== game.game.name %></td><td><%= game.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+        <tr><td><%== game.game.name %></td><td><%= ts game.created_at.strftime %></td>
             <td>
                 <% game.users.each do |player| %>
                     <%== player.handle %>
