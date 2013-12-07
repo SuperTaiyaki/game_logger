@@ -2,6 +2,7 @@
 
 require 'erubis'
 require 'tilt/erubis'
+require 'cgi' # HTTP url parsing
 
 Camping.goes :Members
 module Members
@@ -10,6 +11,10 @@ end
 
 
 module Members::Models
+    # Enable the SQL logging
+    Base.logger = Logger.new(STDOUT)
+    Base.clear_active_connections!
+
     class User < Base
         has_many :histories, :through => :players
         has_many :players
@@ -17,6 +22,10 @@ module Members::Models
 
     class Game < Base
         has_many :histories
+        # Unfortunately this doesn't work - R not defined, GameViewN not defined... 
+        def link(obj)
+            return "<a href='#{R(obj, self.id)}'>#{self.name}</a>"
+        end
     end
 
     class History < Base
@@ -73,6 +82,8 @@ module Members::Controllers
 
             @users = User.all()
             @games = Game.all()
+
+            @tables = History.includes(:game).all()
 
             render :index
         end
@@ -190,6 +201,70 @@ module Members::Controllers
         def post()
             Player.create(:history_id => @input.table_id, :user_id => @input.user)
             redirect TableViewN, @input.table_id
+        end
+    end
+
+    class GameRanking
+        def get()
+            # Most popular games within given timeframe
+            # Popularity = number of games played = entries in the History table for each game
+            # SQL is something like
+            # SELECT game_id, count(game_id) FROM members_histories GROUP BY game_id ORDER BY count(game_id) desc;
+            #@games = Game.
+            # .count() does... something I don't want, a number comes out at the end instead of regular results
+            @games = History.select("game_id, count(game_id) as plays, created_at").group(:game_id)
+            if @input.has_key?('date_start') && @input['date_start'].length > 0
+                @games = @games.where("created_at >= ?", @input['date_start'])
+            end
+            if @input.has_key?('date_end') && @input['date_end'].length > 0
+                @games = @games.where("created_at <= ?", @input['date_end'])
+            end
+            if @input.has_key?('limit')
+                @games = @games.limit(@input['limit'])
+            end
+
+            # TODO: Add in the .where bit. Looks like:
+            # Client.where(created_at: (Time.now.midnight - 1.day)..Time.now.midnight)
+            render :game_rankings
+        end
+    end
+
+    class GameFilter
+        def get()
+            # TODO: Fit in a default filter so this doesn't take too long to load
+            # Camping seems not to deal with multi select forms - they get crunched:
+            # Query: date_start=&date_end=&games=1&games=2&games=3&games=4&filter=Filter
+            # Data: {"date_start"=>"", "date_end"=>"", "games"=>"4", "filter"=>"Filter"}
+            # Break it up with stdlib CGI instead
+            parts = @env['QUERY_STRING']
+            request = CGI.parse(parts)
+
+            query = History.includes(:users, :game).order(:created_at)
+            if request['games'].length > 0
+                query = query.where(game_id: request['games'])
+            end
+            if request['players'].length > 0
+                # Uggghhh activerecord, get out of my way...
+                # TODO: Kill the members_ bit of the table names and fix this
+                query = query.where(members_users: {id: request['players']})
+            end
+            # date_start and _end aren't multiselects, so back to @input
+            if @input.has_key?('date_start') && @input['date_start'].length > 0
+                query = query.where("created_at >= ?", @input['date_start'])
+            end
+            if @input.has_key?('date_end') && @input['date_end'].length > 0
+                query = query.where("created_at <= ?", @input['date_end'])
+            end
+            # @args = @input.to_s
+            @games = query
+            @count = query.size
+            @args = request.to_s
+            @rq = @env['QUERY_STRING'].to_s
+
+            # Fill in the dropdowns
+            @all_games = Game.all()
+            @all_users = User.all()
+            render :game_filter
         end
     end
 

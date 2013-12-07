@@ -1,5 +1,14 @@
 <a href="<%= R(TableCreate) %>">New table</a><br />
 
+Tables:
+<ul>
+    <% @tables.each do |table| %>
+
+        <li><a href="<%= R(TableViewN, table.id) %>"><%== table.game.name %> - <%== table.created_at %></a></li>
+    </li>
+    <% end %>
+</ul>
+
 Users:
 <ul>
     <% @users.each do |user| %>
@@ -16,3 +25,5 @@ Games:
 </ul>
 <a href="<%= R(GameCreate) %>">Create new</a><br />
 
+<a href="<%= R(GameRanking) %>">Game Rankings</a><br />
+<a href="<%= R(GameFilter) %>">Activity List </a><br />

@@ -1,0 +1,40 @@
+<form action="<%= R(GameFilter) %>">
+    Date: From <input type="text" class="date_select" name="date_start"></input>
+     to <input type="text" class="date_select" name="date_end"></input><br />
+    Players: 
+    <select name="players" multiple>
+        <% @all_users.each do |user| %>
+            <option value="<%= user.id %>"><%== user.handle %></option>
+        <% end %>
+    </select><br />
+    Games:
+    <select name="games" multiple>
+        <% @all_games.each do |game| %>
+            <option value="<%= game.id %>"><%== game.name %></option>
+        <% end %>
+    </select><br />
+    <input type="submit" name="filter" value="Filter"></input>
+</form>
+
+<!-- Placed here since the relevant elements should now be in the DOM -->
+<script type="text/javascript">
+$('select').multiselect().multiselectfilter();
+//$('input[type="date"]').datepicker(); // Can't trust browsers to do this right just yet
+$('input.date_select').datepicker({dateFormat: $.datepicker.ISO_8601});
+// TODO: When start date changes, update end date
+</script>
+Entries: <%== @count %>
+<table>
+    <tr><th>Game</th><th>Time</th><th>Players</th></tr>
+    <% @games.each do |game| %>
+        <tr><td><%== game.game.name %></td><td><%= game.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+            <td>
+                <% game.users.each do |player| %>
+                    <%== player.handle %>
+                <% end %>
+            </td></tr>
+    <% end %>
+</table>
+
+Data: <%== @args %><br />
+Query: <%== @rq %>

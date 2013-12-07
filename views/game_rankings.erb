@@ -1,0 +1,16 @@
+<form action="<%= R(GameRanking) %>">
+    Date: From <input type="text" class="date_select" name="date_start"></input>
+     to <input type="text" class="date_select" name="date_end"></input><br />
+
+    Number of results: <input type="number" name="limit" value="10"></input>
+    <input type="submit" name="submit" value="Filter"></input>
+</form>
+<script type="text/javascript">
+$('input.date_select').datepicker({dateFormat: $.datepicker.ISO_8601});
+</script>
+<table>
+    <tr><th>Game</th><th>Plays</th></tr>
+    <% @games.each do |game| %>
+        <tr><td><%== game.game.name %></td><td><%= game.plays %></td></tr>
+    <% end %>
+</table>
