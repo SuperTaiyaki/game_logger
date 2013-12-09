@@ -11,14 +11,16 @@ Tables:
     </li>
     <% end %>
 </ul>
-
+<% if false %>
 Users:
 <ul>
     <% @users.each do |user| %>
         <li><a href="<%= R(UserViewN, user.id) %>"><%== user.handle %></a></li>
     <% end %>
 </ul>
-<a href="<%= R(UserCreate) %>">Create new</a><br />
+<% end %>
+<a href="<%= R(UserCreate) %>">Create new user</a><br />
+<% if false %>
 Games:
 <ul>
     <% @games.each do |game| %>
@@ -26,11 +28,17 @@ Games:
     <% end %>
 
 </ul>
-<a href="<%= R(GameCreate) %>">Create new</a><br />
 <% end %>
-
+<a href="<%= R(GameCreate) %>">Create new player</a><br />
+<% end %>
+<br />
 <a href="<%= R(GameRanking) %>">Game Rankings</a><br />
 <a href="<%= R(GameFilter) %>">Activity List </a><br />
 <br />
 <br />
-<a href="<%= R(Login) %>">Login</a> <a href="<%= R(Logout) %>">Logout</a>
+
+<% if is_admin %>
+    <a href="<%= R(Logout) %>">Logout</a>
+<% else %>
+        <a href="<%= R(Login) %>">Login</a> 
+<% end %>

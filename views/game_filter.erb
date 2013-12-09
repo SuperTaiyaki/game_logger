@@ -16,25 +16,33 @@
     <input type="submit" name="filter" value="Filter"></input>
 </form>
 
-<!-- Placed here since the relevant elements should now be in the DOM -->
-<script type="text/javascript">
-$('select').multiselect().multiselectfilter();
-//$('input[type="date"]').datepicker(); // Can't trust browsers to do this right just yet
-$('input.date_select').datepicker({dateFormat: $.datepicker.ISO_8601});
-// TODO: When start date changes, update end date
-</script>
 Entries: <%== @count %>
-<table>
-    <tr><th>Game</th><th>Time</th><th>Players</th></tr>
+<table id="table" class="tablesorter">
+    <thead>
+        <tr><th>Game</th><th>Time</th><th>Players</th></tr>
+    </thead>
+    <tbody>
     <% @games.each do |game| %>
-        <tr><td><%== game.game.name %></td><td><%= ts game.created_at.strftime %></td>
+        <tr><td><%== game.game.name %></td><td><%= ts game.created_at %></td>
             <td>
                 <% game.users.each do |player| %>
                     <%== player.handle %>
                 <% end %>
             </td></tr>
-    <% end %>
+        <% end %>
+        </tbody>
 </table>
-
+<!-- Placed here since the relevant elements should now be in the DOM -->
+<script type="text/javascript">
+$(document).ready(function() {
+    $('select').multiselect().multiselectfilter();
+    //$('input[type="date"]').datepicker(); // Can't trust browsers to do this right just yet
+    $('input.date_select').datepicker({dateFormat: $.datepicker.ISO_8601});
+    // TODO: When form start date changes, update end date
+    $('#table').tablesorter();
+});
+</script>
+<% if false %>
 Data: <%== @args %><br />
 Query: <%== @rq %>
+<% end %>

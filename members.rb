@@ -6,6 +6,9 @@ require 'cgi' # HTTP url parsing
 require 'camping/session'
 
 Camping.goes :Members
+
+#require 'active_record'
+
 module Members
     set :views, File.dirname(__FILE__) + '/views'
     set :secret, "notreallysecret"
@@ -17,8 +20,14 @@ module Members::Models
     # For now, this causes .created_at to become Nil
     # Base.default_timezone = 'Osaka'
     # Enable the SQL logging
-    Base.logger = Logger.new(STDOUT)
-    Base.clear_active_connections!
+
+    # http://blog.evanweaver.com/2006/09/17/make-camping-connect-to-mysql/ ?
+
+    #Base.logger = Logger.new(STDOUT)
+    #Base.clear_active_connections!
+    #Base.establish_connection(:adapter => 'sqlite3',
+    #                          :dbfile => 'meeple.db',
+    #                         :database => 'meeple.db')
 
     class User < Base
         has_many :histories, :through => :players
@@ -79,6 +88,17 @@ module Members::Models
             drop_table Players.table_name
         end
     end
+
+    class Fields2 < V 1.1
+        def self.up
+            change_table History.table_name do |t|
+                t.boolean :active, default: true
+            end
+            change_table User.table_name do |t|
+                t.boolean :active, default: true
+            end
+        end
+    end
 end
 
 module Members::Controllers
@@ -86,25 +106,12 @@ module Members::Controllers
     class Index < R '/'
         def get
 
-            @users = User.all()
-            @games = Game.all()
+            #@users = User.all()
+            #@games = Game.all()
 
-            @tables = History.includes(:game).all()
+            @tables = History.includes(:game).where(:active => true).order(:created_at)
 
             render :index
-        end
-    end
-
-    class Page2 < R '/2/(.*)'
-        def get(args)
-            "Args are #{args}"
-        end
-    end
-
-    class Members
-        def get
-            @users = User.all(:select => "handle")
-            render :list
         end
     end
 
@@ -160,7 +167,7 @@ module Members::Controllers
     class GameCreate
 
         def get()
-            admin_check2
+            admin_check
             @game = Game.new()
             render :game_edit
         end
@@ -182,7 +189,10 @@ module Members::Controllers
         def get(id)
             @table = History.find(id)
             @players = @table.users
-            @all_players = User.all()
+            #@all_players = User.all()
+            @all_players = User.where.not(id: @players).order(:handle)
+            @all_games = Game.all.order(:name)
+
             render :table_view
         end
     end
@@ -191,11 +201,11 @@ module Members::Controllers
             admin_check
 
             @table = History.new()
-            @games = Game.all()
+            @games = Game.all().order(:name)
             render :table_edit
         end
         def post()
-            admin_Check
+            admin_check
 
             if @input.id
                 table = History.find(@input.id)
@@ -215,15 +225,34 @@ module Members::Controllers
             admin_check
             # TODO: Link up the currently active game and players
             @table = History.find(id)
-            @games = Game.all()
+            @games = Game.all().order(:name)
             render :table_edit
         end
     end
-    class TableAddPlayer
+    class TableUpdate
         def post()
             admin_check
-            Player.create(:history_id => @input.table_id, :user_id => @input.user)
-            redirect TableViewN, @input.table_id
+
+            if @input.has_key?('add')
+                Player.create(:history_id => @input.table_id, :user_id => @input.user)
+                redirect TableViewN, @input.table_id
+            elsif @input.has_key?('change')
+                table = History.find(@input['table_id'])
+                new_table = History.create(:game_id => @input['game'])
+                @input.keys.each do |k|
+                    if k =~ /player_(\d+)/
+                        new_table.players.create(:user_id => $1)
+                    end
+                end
+                table.active = false
+                table.save
+                redirect TableViewN, new_table.id
+            elsif @input.has_key?('end')
+                table = History.find(@input['table_id'])
+                table.active = false
+                table.save()
+                redirect Index
+            end
         end
     end
 
@@ -262,7 +291,7 @@ module Members::Controllers
             parts = @env['QUERY_STRING']
             request = CGI.parse(parts)
 
-            query = History.includes(:users, :game).order(:created_at)
+            query = History.includes(:users, :game).order(:created_at).where(:active => false)
             if request['games'].length > 0
                 query = query.where(game_id: request['games'])
             end
@@ -285,25 +314,32 @@ module Members::Controllers
             @rq = @env['QUERY_STRING'].to_s
 
             # Fill in the dropdowns
-            @all_games = Game.all()
-            @all_users = User.all()
+            @all_games = Game.all().order(:name)
+            @all_users = User.all().order(:handle)
             render :game_filter
         end
     end
 
     class Login
-        def get()
-            @state['admin'] = true
-            redirect Index
+        def get
+            render :login
+        end
+        def post
+            if @input['password'] == 'password'
+                @state['admin'] = true
+                redirect Index
+            else
+                # TODO: Error messages!
+                redirect Login
+            end
         end
     end
     class Logout
-        def get()
+        def get
             @state.delete('admin')
             redirect Index
         end
     end
-
 
 end
 module Members::Helpers
@@ -338,5 +374,13 @@ end
 
 def Members.create
     Members::Models.create_schema
+end
+
+if ENV.has_key?('OPENSHIFT_POSTGRESQL_DB_USERNAME')
+    #Camping::Base.establish_connection(:adapter => 'postgresql',
+    #    :database => 'meeple',
+    #    :username => 'user',
+    #    :password => 'password')
+    Camping::Models::Base.establish_connection(ENV['OPENSHIFT_POSTGRESQL_DB_URL'] + '/gamelog')
 end
 
