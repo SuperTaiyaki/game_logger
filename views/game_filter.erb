@@ -1,16 +1,16 @@
 <form action="<%= R(GameFilter) %>">
-    Date: From <input type="text" class="date_select" name="date_start"></input>
-     to <input type="text" class="date_select" name="date_end"></input><br />
+    Date: From <input type="text" class="date_select" name="date_start" value="<%== @input['date_start'] %>"></input>
+     to <input type="text" class="date_select" name="date_end" <%== @input['date_end'] %></input><br />
     Players: 
-    <select name="players" multiple>
+    <select name="p" multiple>
         <% @all_users.each do |user| %>
-            <option value="<%= user.id %>"><%== user.handle %></option>
+            <option value="<%= user.id %>" <%= (@selected_players.include?(user.id) ? "selected" : "") %>><%== user.handle %></option>
         <% end %>
     </select><br />
     Games:
     <select name="games" multiple>
         <% @all_games.each do |game| %>
-            <option value="<%= game.id %>"><%== game.name %></option>
+            <option value="<%= game.id %>" <%= @selected_games.member?(game.id) ? "selected" : "" %>><%== game.name %></option>
         <% end %>
     </select><br />
     <input type="submit" name="filter" value="Filter"></input>
@@ -42,7 +42,3 @@ $(document).ready(function() {
     $('#table').tablesorter();
 });
 </script>
-<% if false %>
-Data: <%== @args %><br />
-Query: <%== @rq %>
-<% end %>

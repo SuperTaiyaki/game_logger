@@ -294,15 +294,13 @@ module Members::Controllers
             if request['games'].length > 0
                 query = query.where(game_id: request['games'])
             end
-            if request['players'].length > 0
+            # Changed 'players' to 'p' to shorten the GET request - stops the request overflowing
+            if request['p'].length > 0
                 # Uggghhh activerecord, get out of my way...
                 # TODO: Kill the members_ bit of the table names and fix this
-                # Want all the games where a player was in a game
-                #players = Player.find(request['players'])
-                #games = Game.where(members_users: {id: request['players']})
-                #query = query.where(members_users: {id: request['players']})
-                #query = query.where(:id => games)
-                query = query.where("members_histories.id IN (SELECT members_histories.id FROM members_histories INNER JOIN members_players ON members_players.history_id = members_histories.id INNER JOIN members_users ON members_players.user_id = members_users.id WHERE members_users.id IN (?))", @request['players'])
+                # Want all the games where a player was in a game. Subquery is more straightforward than joins because
+                # there WERE needs to filter on players, but the result needs all the players.
+                query = query.where("members_histories.id IN (SELECT members_histories.id FROM members_histories INNER JOIN members_players ON members_players.history_id = members_histories.id WHERE members_players.user_id IN (?))", request['p'])
             end
             # date_start and _end aren't multiselects, so back to @input
             if @input.has_key?('date_start') && @input['date_start'].length > 0
@@ -311,12 +309,11 @@ module Members::Controllers
             if @input.has_key?('date_end') && @input['date_end'].length > 0
                 query = query.where("members_histories.created_at <= ?", @input['date_end'])
             end
-            # @args = @input.to_s
             @games = query
             @count = query.size
-            @args = request.to_s
-            @rq = @env['QUERY_STRING'].to_s
 
+            @selected_players = request['p'].map { |x| x.to_i }
+            @selected_games = request['games'].map { |x| x.to_i }
             # Fill in the dropdowns
             @all_games = Game.all().order(:name)
             @all_users = User.all().order(:handle)
