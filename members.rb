@@ -52,6 +52,9 @@ module Members::Models
         belongs_to :history
     end
 
+    class Admin < Base
+    end
+
     class BasicFields1 < V 1.0
         def self.up
             create_table User.table_name do |t|
@@ -94,6 +97,15 @@ module Members::Models
             end
             change_table User.table_name do |t|
                 t.boolean :active, default: true
+            end
+        end
+    end
+
+    class Fields3 < V 1.2
+        def self.up
+            create_table Admin.table_name do |t|
+                t.string :username
+                t.string :password
             end
         end
     end
@@ -326,7 +338,10 @@ module Members::Controllers
             render :login
         end
         def post
-            if @input['password'] == 'password'
+            # TODO: THIS IS DUMB AND WRONG
+            # Postgres is missing pgcrypt on the openshift gear, fix later
+            check = Admin.where(:username => @input['username'], :password => Digest::SHA2.base64digest(@input['password']))
+            if check.count > 0
                 @state['admin'] = true
                 redirect Index
             else
