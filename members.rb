@@ -3,6 +3,7 @@
 require 'erubis'
 require 'tilt/erubis'
 require 'cgi' # HTTP url parsing
+require 'camping'
 require 'camping/session'
 
 Camping.goes :Members
@@ -25,10 +26,7 @@ module Members::Models
 
     #Base.logger = Logger.new(STDOUT)
     #Base.clear_active_connections!
-    #Base.establish_connection(:adapter => 'sqlite3',
-    #                          :dbfile => 'meeple.db',
-    #                         :database => 'meeple.db')
-
+    
     class User < Base
         has_many :histories, :through => :players
         has_many :players
@@ -298,7 +296,12 @@ module Members::Controllers
             if request['players'].length > 0
                 # Uggghhh activerecord, get out of my way...
                 # TODO: Kill the members_ bit of the table names and fix this
-                query = query.where(members_users: {id: request['players']})
+                # Want all the games where a player was in a game
+                #players = Player.find(request['players'])
+                #games = Game.where(members_users: {id: request['players']})
+                #query = query.where(members_users: {id: request['players']})
+                #query = query.where(:id => games)
+                query = query.where("members_histories.id IN (SELECT members_histories.id FROM members_histories INNER JOIN members_players ON members_players.history_id = members_histories.id INNER JOIN members_users ON members_players.user_id = members_users.id WHERE members_users.id IN (?))", @request['players'])
             end
             # date_start and _end aren't multiselects, so back to @input
             if @input.has_key?('date_start') && @input['date_start'].length > 0
