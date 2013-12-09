@@ -1,0 +1,11 @@
++ /members.rb
++ /views/
++ /views/*.erb
++ /public/
++ /public/css
++ /public/css/**
++ /public/scripts/
++ /public/scripts/*
++ /public/img/
++ /public/img/*
+- *

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# Script to handle deployment to OpenShift. Checkout the live repo to 'sakazuki' and this
+# will populate it. Check the filter in deploy_filter.
+
+# ./build
+rsync -ripL --filter=': deploy_filter' . gamelog
+# export GIT_DIR=sakazuki/.git	
+# git commit -a
+
