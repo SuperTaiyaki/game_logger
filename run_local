@@ -2,6 +2,7 @@
 
 export OPENSHIFT_REPO_DIR=`pwd`
 export OPENSHIFT_APP_DNS='127.0.0.1:8080'
+export OPENSHIFT_DATA_DIR=`pwd`/data
 
 export OPENSHIFT_POSTGRESQL_DB_USERNAME='gamelog'
 # OPENSHIFT_POSTGRESQL_DB_URL=postgresql://adminzlyemv5:YuFkxKbqNV4e@127.2.175.2:5432

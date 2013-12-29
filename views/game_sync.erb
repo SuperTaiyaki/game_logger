@@ -1,0 +1,31 @@
+<form action="<%= R(GameSync) %>" method="GET">
+    List ID: <input type="text" name="list_id" value="153822"></input>
+    <input type="submit" name="load" value="Load list"></input>
+</form>
+
+<table>
+    <thead>
+        <tr><th>ID</th><th>Name</th></tr>
+    </thead>
+    <tbody>
+    <tr><td colspan="2">New entries</td></tr>
+    <% @games_new.each do |game| %>
+        <tr><td><%= game[:bgg_id] %></td><td><%== game[:name] %></td></tr>
+    <% end %>
+
+    <tr><td colspan="2">Removed entries</td></tr>
+    <% @games_delete.each do |game| %>
+        <tr><td><%= game[:bgg_id] %></td><td><%== game[:name] %></td></tr>
+    <% end %>
+
+    <tr><td colspan="2">Kept entries</td></tr>
+    <% @games_keep.each do |game| %>
+        <tr><td><%= game[:bgg_id] %></td><td><%== game[:name] %></td></tr>
+    <% end %>
+
+    </tbody>
+</table>
+
+<form action="<%= R(GameSync) %>" method="POST">
+    <input type="submit" name="update" value="Update database"></input>
+</form>

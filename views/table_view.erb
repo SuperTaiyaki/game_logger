@@ -6,10 +6,10 @@ Players:
         <li><%== p.handle %></li>
     <% end %>
 </ul>
-Add Player:
+Add Players:
 <form action="<%= R(TableUpdate) %>" method="POST">
     <input type="hidden" name="table_id" value="<%= @table.id %>"></input>
-    <select name="user">
+    <select name="user[]" class="multiple" multiple>
         <% @all_players.each do |player| %>
         <option value="<%= player.id %>"><%== player.handle %></option>
         <% end %>
@@ -37,3 +37,9 @@ Add Player:
     <br />
     <input type="submit" name="end" value="End table"></input>
 </form>
+
+<script type="text/javascript">
+$(document).ready(function() {
+    $('select.multiple').multiselect().multiselectfilter();
+});
+</script>

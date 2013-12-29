@@ -1,14 +1,15 @@
 <form action="<%= R(GameFilter) %>">
     Date: From <input type="text" class="date_select" name="date_start" value="<%== @input['date_start'] %>"></input>
      to <input type="text" class="date_select" name="date_end" <%== @input['date_end'] %></input><br />
-    Players: 
-    <select name="p" multiple>
+     Players: 
+     <%# Short name to minimize the length of the query string - don't blow out the size limit %>
+    <select name="p[]" multiple>
         <% @all_users.each do |user| %>
             <option value="<%= user.id %>" <%= (@selected_players.include?(user.id) ? "selected" : "") %>><%== user.handle %></option>
         <% end %>
     </select><br />
     Games:
-    <select name="games" multiple>
+    <select name="games[]" multiple>
         <% @all_games.each do |game| %>
             <option value="<%= game.id %>" <%= @selected_games.member?(game.id) ? "selected" : "" %>><%== game.name %></option>
         <% end %>

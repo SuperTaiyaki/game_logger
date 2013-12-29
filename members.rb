@@ -1,10 +1,13 @@
 #!/usr/bin/ruby
 
+require 'date'
 require 'erubis'
-require 'tilt/erubis'
+# require 'tilt/erubis'
+require 'tilt'
 require 'cgi' # HTTP url parsing
 require 'camping'
 require 'camping/session'
+require './bgg'
 
 Camping.goes :Members
 
@@ -45,6 +48,13 @@ module Members::Models
         #has_many :users
         has_many :players
         has_many :users, :through => :players
+
+        def close
+            # UPDATE Players SET end_time = now() WHERE history_id = ?
+            self.players.update_all(end_time: DateTime.now)
+            self.update(active: false, end_time: DateTime.now)
+            # No implicit save
+        end
     end
 
     class Player < Base
@@ -55,6 +65,9 @@ module Members::Models
     class Admin < Base
     end
 
+    class Option < Base
+    end
+# {{{ Migrations
     class BasicFields1 < V 1.0
         def self.up
             create_table User.table_name do |t|
@@ -110,6 +123,33 @@ module Members::Models
         end
     end
 
+    class Fields4 < V 1.4
+        def self.up
+            change_table Player.table_name do |t|
+                t.timestamp :end_time
+            end
+            change_table History.table_name do |t|
+                t.timestamp :end_time
+            end
+        end
+    end
+
+    class Fields5 < V 1.5
+       def self.up
+           change_table Game.table_name do |t|
+               t.integer :bgg_id
+               t.integer :bgg_updated
+           end
+           change_table Player.table_name do |t|
+               t.timestamps
+           end
+           create_table Option.table_name do |t|
+               t.string :name
+               t.string :value
+           end
+       end
+    end
+    # }}}
 end
 
 module Members::Controllers
@@ -129,6 +169,8 @@ module Members::Controllers
     class UserViewN
         def get(id)
             @user = User.find(id)
+            # Total hours played
+            #
             render :member_view
         end
     end
@@ -157,13 +199,21 @@ module Members::Controllers
             user.name = @input.name
             user.handle = @input.handle
             user.save()
-            redirect(UserViewN, user.id)
+            if @input.has_key?('save_new')
+                redirect(UserCreate)
+            else
+                redirect(UserViewN, user.id)
+            end
         end
     end
 
     class GameViewN
         def get(id)
             @game = Game.find(id)
+            # Total time played:
+            # SELECT SUM(end_time - created_at) FROM History WHERE game_id = ?
+            # Total number of plays:
+            # SELECT COUNT(*) FROM History WHERE game_id = ?
             render :game_view
         end
     end
@@ -194,6 +244,45 @@ module Members::Controllers
             redirect(GameViewN, game.id)
         end
     end
+
+    class GameSync
+        def get()
+
+            @games_new = []
+            @games_keep = []
+            @games_delete = []
+            if @input.has_key?('list_id')
+                download_list(@input['list_id'])
+                list = show_list()
+
+                list.each do |g|
+                    ent = Game.where(bgg_id: g[:bgg_id])
+                    if ent.size == 0
+                        @games_new.push(g)
+                    else
+                        @games_keep.push(g)
+                    end
+                end
+                @games_new = list
+                @games_keep = @games_delete = []
+            end
+            render :game_sync
+        end
+
+        def post()
+            if @input.has_key?('update')
+                list = show_list()
+                list.each do |g|
+                    ent = Game.where(bgg_id: g[:bgg_id])
+                    if ent.size == 0
+                        g = Game.create(name: g[:name], bgg_id: g[:bgg_id])
+                    end
+                end
+            end
+            redirect(Index)
+        end
+    end
+
 
     # Maybe this needs to be authenticated too?
     class TableViewN
@@ -245,7 +334,10 @@ module Members::Controllers
             admin_check
 
             if @input.has_key?('add')
-                Player.create(:history_id => @input.table_id, :user_id => @input.user)
+                # Multiselect stuff
+                @input['user'].each do |uid|
+                    Player.create(:history_id => @input.table_id, :user_id => uid)
+                end
                 redirect TableViewN, @input.table_id
             elsif @input.has_key?('change')
                 table = History.find(@input['table_id'])
@@ -255,12 +347,12 @@ module Members::Controllers
                         new_table.players.create(:user_id => $1)
                     end
                 end
-                table.active = false
-                table.save
+                table.close()
+                table.save()
                 redirect TableViewN, new_table.id
             elsif @input.has_key?('end')
                 table = History.find(@input['table_id'])
-                table.active = false
+                table.close()
                 table.save()
                 redirect Index
             end
@@ -299,20 +391,18 @@ module Members::Controllers
             # Query: date_start=&date_end=&games=1&games=2&games=3&games=4&filter=Filter
             # Data: {"date_start"=>"", "date_end"=>"", "games"=>"4", "filter"=>"Filter"}
             # Break it up with stdlib CGI instead
-            parts = @env['QUERY_STRING']
-            request = CGI.parse(parts)
 
             query = History.includes(:users, :game).order(:created_at).where(:active => false)
-            if request['games'].length > 0
-                query = query.where(game_id: request['games'])
+            if @input.has_key?('games')
+                query = query.where(game_id: @input['games'])
             end
             # Changed 'players' to 'p' to shorten the GET request - stops the request overflowing
-            if request['p'].length > 0
+            if @input.has_key?('p')
                 # Uggghhh activerecord, get out of my way...
                 # TODO: Kill the members_ bit of the table names and fix this
                 # Want all the games where a player was in a game. Subquery is more straightforward than joins because
-                # there WERE needs to filter on players, but the result needs all the players.
-                query = query.where("members_histories.id IN (SELECT members_histories.id FROM members_histories INNER JOIN members_players ON members_players.history_id = members_histories.id WHERE members_players.user_id IN (?))", request['p'])
+                # the WHERE needs to filter on players, but the result needs all the players.
+                query = query.where("members_histories.id IN (SELECT members_histories.id FROM members_histories INNER JOIN members_players ON members_players.history_id = members_histories.id WHERE members_players.user_id IN (?))", @input['p'])
             end
             # date_start and _end aren't multiselects, so back to @input
             if @input.has_key?('date_start') && @input['date_start'].length > 0
@@ -324,8 +414,8 @@ module Members::Controllers
             @games = query
             @count = query.size
 
-            @selected_players = request['p'].map { |x| x.to_i }
-            @selected_games = request['games'].map { |x| x.to_i }
+            @selected_players = @input.has_key?('p') ? @input['p'].map { |x| x.to_i } : []
+            @selected_games = @input.has_key?('games') ? @input['games'].map { |x| x.to_i } : []
             # Fill in the dropdowns
             @all_games = Game.all().order(:name)
             @all_users = User.all().order(:handle)
@@ -393,10 +483,14 @@ def Members.create
 end
 
 if ENV.has_key?('OPENSHIFT_POSTGRESQL_DB_USERNAME')
+    print "Attaching to PGSQL"
     #Camping::Base.establish_connection(:adapter => 'postgresql',
     #    :database => 'meeple',
     #    :username => 'user',
     #    :password => 'password')
     Camping::Models::Base.establish_connection(ENV['OPENSHIFT_POSTGRESQL_DB_URL'] + '/gamelog')
+else
+    print "No database set"
+    exit
 end
 
