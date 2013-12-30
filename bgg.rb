@@ -11,8 +11,8 @@ TEMP_FILENAME="gamelist.xml"
 FILENAME=File.join(ENV['OPENSHIFT_DATA_DIR'], TEMP_FILENAME)
 
 def download_list(url)
-    return # DEBUG Don't hammer the server
-    data = Net::HTTP.get(SEARCH_URL + url)
+    #return # DEBUG Don't hammer the server
+    data = Net::HTTP.get(URI(SEARCH_URL + url))
     f = File.open(FILENAME, mode="w")
     f.write(data)
     f.close
@@ -43,7 +43,7 @@ def show_list()
 
     doc.elements.each('geeklist/item') do |game|
         games.push({:name => game.attributes['objectname'],
-                         :bgg_id => game.attributes['id']})
+                         :bgg_id => game.attributes['objectid']})
     end
     games
 end

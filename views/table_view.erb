@@ -6,8 +6,10 @@ Players:
         <li><%== p.handle %></li>
     <% end %>
 </ul>
+<hr />
 Add Players:
 <form action="<%= R(TableUpdate) %>" method="POST">
+    <div id="add_player">
     <input type="hidden" name="table_id" value="<%= @table.id %>"></input>
     <select name="user[]" class="multiple" multiple>
         <% @all_players.each do |player| %>
@@ -15,9 +17,10 @@ Add Players:
         <% end %>
     </select>
     <input type="submit" name="add" value="Add"></input><br />
-
-    <br />
+    </div>
+    <hr />
     <div id="game_change">
+        New game:
     <select name="game">
         <% @all_games.each do |game| %>
         <option value="<%= game.id %>"><%== game.name %></option>
@@ -28,13 +31,13 @@ Add Players:
         <input id="<%= "player_#{p.id}" %>" type="checkbox" checked name="<%= "player_#{p.id}" %>"></input>
         <label for="<%= "player_#{p.id}" %>"><%== p.handle %></label>
     <br />
-<% end %>
+    <% end %>
 
     <input type="submit" name="change" value="Change game"></input><br />
     </div>
 
 
-    <br />
+    <hr />
     <input type="submit" name="end" value="End table"></input>
 </form>
 

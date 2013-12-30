@@ -19,149 +19,14 @@ module Members
     include Camping::Session
 end
 
-module Members::Models
-    # Why does Osaka get an entry?
-    # For now, this causes .created_at to become Nil
-    # Base.default_timezone = 'Osaka'
-    # Enable the SQL logging
-
-    # http://blog.evanweaver.com/2006/09/17/make-camping-connect-to-mysql/ ?
-
-    #Base.logger = Logger.new(STDOUT)
-    #Base.clear_active_connections!
-    
-    class User < Base
-        has_many :histories, :through => :players
-        has_many :players
-    end
-
-    class Game < Base
-        has_many :histories
-        # Unfortunately this doesn't work - R not defined, GameViewN not defined... 
-        def link(obj)
-            return "<a href='#{R(obj, self.id)}'>#{self.name}</a>"
-        end
-    end
-
-    class History < Base
-        belongs_to :game # This probably isn't quite the right relation, but it works
-        #has_many :users
-        has_many :players
-        has_many :users, :through => :players
-
-        def close
-            # UPDATE Players SET end_time = now() WHERE history_id = ?
-            self.players.update_all(end_time: DateTime.now)
-            self.update(active: false, end_time: DateTime.now)
-            # No implicit save
-        end
-    end
-
-    class Player < Base
-        belongs_to :user
-        belongs_to :history
-    end
-
-    class Admin < Base
-    end
-
-    class Option < Base
-    end
-# {{{ Migrations
-    class BasicFields1 < V 1.0
-        def self.up
-            create_table User.table_name do |t|
-                t.string :name
-                t.string :handle
-                t.timestamps
-            end
-
-            create_table Game.table_name do |t|
-                t.string :name
-            end
-
-            create_table History.table_name do |t|
-                t.timestamps
-                t.integer :game_id
-            end
-
-            # Join table, this really shouldn't have an index
-            create_table Player.table_name do |t|
-                t.integer :history_id
-                t.integer :user_id
-            end
-
-            #User.create(:name => "Test Player", :handle => "Haaandle")
-            #Game.create(:name => "Test game")
-        end
-
-        def self.down
-            drop_table User.table_name
-            drop_table Game.table_name
-            drop_table History.table_name
-            drop_table Players.table_name
-        end
-    end
-
-    class Fields2 < V 1.1
-        def self.up
-            change_table History.table_name do |t|
-                t.boolean :active, default: true
-            end
-            change_table User.table_name do |t|
-                t.boolean :active, default: true
-            end
-        end
-    end
-
-    class Fields3 < V 1.2
-        def self.up
-            create_table Admin.table_name do |t|
-                t.string :username
-                t.string :password
-            end
-        end
-    end
-
-    class Fields4 < V 1.4
-        def self.up
-            change_table Player.table_name do |t|
-                t.timestamp :end_time
-            end
-            change_table History.table_name do |t|
-                t.timestamp :end_time
-            end
-        end
-    end
-
-    class Fields5 < V 1.5
-       def self.up
-           change_table Game.table_name do |t|
-               t.integer :bgg_id
-               t.integer :bgg_updated
-           end
-           change_table Player.table_name do |t|
-               t.timestamps
-           end
-           create_table Option.table_name do |t|
-               t.string :name
-               t.string :value
-           end
-       end
-    end
-    # }}}
-end
+require './members/models'
 
 module Members::Controllers
 
     class Index < R '/'
+
         def get
-
-            #@users = User.all()
-            #@games = Game.all()
-
             @tables = History.includes(:game).where(:active => true).order(:created_at)
-
             render :index
         end
     end
@@ -199,11 +64,19 @@ module Members::Controllers
             user.name = @input.name
             user.handle = @input.handle
             user.save()
+            alert("User created")
             if @input.has_key?('save_new')
                 redirect(UserCreate)
             else
                 redirect(UserViewN, user.id)
             end
+        end
+    end
+
+    class UserList
+        def get
+            @users = User.where(active: true).order(:handle)
+            render :user_list
         end
     end
 
@@ -214,6 +87,10 @@ module Members::Controllers
             # SELECT SUM(end_time - created_at) FROM History WHERE game_id = ?
             # Total number of plays:
             # SELECT COUNT(*) FROM History WHERE game_id = ?
+            # Total number of players
+            # SELECT COUNT(*) FROM History RIGHT JOIN Players ON Player.history_id = History.id WHERE game_id = ?
+            time_search = History.select("date_trunc('second', SUM(end_time - created_at)) AS total_time").where(active: false, game_id: id).take
+            @total_time = time_search.total_time
             render :game_view
         end
     end
@@ -246,7 +123,8 @@ module Members::Controllers
     end
 
     class GameSync
-        def get()
+        def get
+            admin_check           
 
             @games_new = []
             @games_keep = []
@@ -270,6 +148,7 @@ module Members::Controllers
         end
 
         def post()
+            admin_check
             if @input.has_key?('update')
                 list = show_list()
                 list.each do |g|
@@ -289,9 +168,8 @@ module Members::Controllers
         def get(id)
             @table = History.find(id)
             @players = @table.users
-            #@all_players = User.all()
-            @all_players = User.where.not(id: @players).order(:handle)
-            @all_games = Game.all.order(:name)
+            @all_players = User.where(active: true).where.not(id: @players).order(:handle)
+            @all_games = Game.where(active: true).order(:name)
 
             render :table_view
         end
@@ -301,7 +179,7 @@ module Members::Controllers
             admin_check
 
             @table = History.new()
-            @games = Game.all().order(:name)
+            @games = Game.where(active: true).order(:name)
             render :table_edit
         end
         def post()
@@ -325,7 +203,7 @@ module Members::Controllers
             admin_check
             # TODO: Link up the currently active game and players
             @table = History.find(id)
-            @games = Game.all().order(:name)
+            @games = Game.where(active: true).order(:name)
             render :table_edit
         end
     end
@@ -378,14 +256,15 @@ module Members::Controllers
                 @games = @games.limit(@input['limit'])
             end
 
-            # TODO: Add in the .where bit. Looks like:
-            # Client.where(created_at: (Time.now.midnight - 1.day)..Time.now.midnight)
+            # TODO: Make ActiveRecord acknowledge this
+            @games.order(plays: :desc)
+
             render :game_rankings
         end
     end
 
     class GameFilter
-        def get()
+        def get
             # TODO: Fit in a default filter so this doesn't take too long to load
             # Camping seems not to deal with multi select forms - they get crunched:
             # Query: date_start=&date_end=&games=1&games=2&games=3&games=4&filter=Filter
@@ -417,9 +296,16 @@ module Members::Controllers
             @selected_players = @input.has_key?('p') ? @input['p'].map { |x| x.to_i } : []
             @selected_games = @input.has_key?('games') ? @input['games'].map { |x| x.to_i } : []
             # Fill in the dropdowns
-            @all_games = Game.all().order(:name)
-            @all_users = User.all().order(:handle)
+            @all_games = Game.where(active: true).order(:name)
+            @all_users = User.where(active: true).order(:handle)
             render :game_filter
+        end
+    end
+
+    class GameList
+        def get
+            @games = Game.where(active: true).order(:name)
+            render :game_list
         end
     end
 
@@ -453,6 +339,7 @@ module Members::Helpers
         # Huh, @state doesn't refer to anything at this point, and yet it works?
         if !is_admin
             # TODO: Some sort of error message
+            alert("Login required.")
             redirect Index
             throw :halt
         end
@@ -465,6 +352,25 @@ module Members::Helpers
 
     def ts(time)
         time.localtime.strftime("%Y-%m-%d %H:%M")
+    end
+
+    def alert(message)
+        alert_raw(CGI.escapeHTML(message))
+    end
+
+    def alert_raw(message)
+        if !@state.has_key?('alert')
+            @state['alert'] = []
+        end
+        @state['alert'].push(message)
+    end
+
+    def alerts
+        if @state.has_key?('alert')
+            @state['alert']
+        else
+            []
+        end
     end
 
     # Could define the erb 'h' here too, apparently, and remove the dependency on erubis
@@ -483,7 +389,6 @@ def Members.create
 end
 
 if ENV.has_key?('OPENSHIFT_POSTGRESQL_DB_USERNAME')
-    print "Attaching to PGSQL"
     #Camping::Base.establish_connection(:adapter => 'postgresql',
     #    :database => 'meeple',
     #    :username => 'user',

@@ -1,2 +1,4 @@
-Game: <%== @game.name %>
-
+Game: <%== @game.name %><br />
+Total play time: <%== @total_time %><br />
+<a href="http://www.boardgamegeek.com/boardgame/<%= @game.bgg_id %>">BGG Link</a><br />
+<a href="<%= R(GameEditN, @game.id) %>">Edit</a>

@@ -5,12 +5,22 @@
     Number of results: <input type="number" name="limit" value="10"></input>
     <input type="submit" name="submit" value="Filter"></input>
 </form>
-<script type="text/javascript">
-$('input.date_select').datepicker({dateFormat: $.datepicker.ISO_8601});
-</script>
-<table>
-    <tr><th>Game</th><th>Plays</th></tr>
+<table class="tablesorter">
+    <thead>
+        <tr><th>Game</th><th>Plays</th></tr>
+    </thead>
+    <tbody>
     <% @games.each do |game| %>
         <tr><td><%== game.game.name %></td><td><%= game.plays %></td></tr>
     <% end %>
+    </tbody>
 </table>
+
+<script type="text/javascript">
+$(document).ready(function() {
+    $('select').multiselect().multiselectfilter();
+    $('input.date_select').datepicker({dateFormat: $.datepicker.ISO_8601});
+    // TODO: When form start date changes, update end date
+    $('.tablesorter').tablesorter();
+});
+</script>

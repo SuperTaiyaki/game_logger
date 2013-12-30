@@ -1,4 +1,6 @@
-+ /members.rb
++ /*.rb
++ /members/
++ /members/*.rb
 + /views/
 + /views/*.erb
 + /public/

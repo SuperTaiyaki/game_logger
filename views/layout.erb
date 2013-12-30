@@ -14,6 +14,19 @@
 <link href="/css/tablesorter.css" media="all" rel="stylesheet" type="text/css" />
 </head>
 <body>
+
+<% if alerts().length > 0 %>
+    <div id="alert">
+        <ul>
+            <% alerts().each do |msg| %>
+            <li><%= msg %></li>
+            <% end %>
+        </ul>
+    
+    </div>
+    <% @state['alert'] = [] %>
+<% end %>
+
 <%= yield %>
 <p><a href="<%= R(Index) %>">Home</a></p>
 Current state: <%== is_admin ? "Admin" : "User" %><br />

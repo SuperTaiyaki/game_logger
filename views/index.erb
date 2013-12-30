@@ -11,24 +11,9 @@ Tables:
     </li>
     <% end %>
 </ul>
-<% if false %>
-Users:
-<ul>
-    <% @users.each do |user| %>
-        <li><a href="<%= R(UserViewN, user.id) %>"><%== user.handle %></a></li>
-    <% end %>
-</ul>
-<% end %>
+<a href="<%= R(UserList) %>">Player List</a><br />
 <a href="<%= R(UserCreate) %>">Create new player</a><br />
-<% if false %>
-Games:
-<ul>
-    <% @games.each do |game| %>
-        <li><a href="<%= R(GameViewN, game.id)%>"><%== game.name %></a></li>
-    <% end %>
-
-</ul>
-<% end %>
+<a href="<%= R(GameList) %>">Game List</a><br />
 <a href="<%= R(GameCreate) %>">Create new game</a><br />
 <% end %>
 <br />
