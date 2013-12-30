@@ -2,8 +2,8 @@
 module Members::Models
     # Enable the SQL logging
 
-    Base.logger = Logger.new(STDOUT)
-    Base.clear_active_connections!
+    #Base.logger = Logger.new(STDOUT)
+    #Base.clear_active_connections!
 
     class User < Base
         has_many :histories, :through => :players
