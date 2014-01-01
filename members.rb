@@ -11,12 +11,43 @@ require './bgg'
 
 Camping.goes :Members
 
-#require 'active_record'
+
+# Apparently the standard way for HTML forms to work is enctype=x-www-form-urlencoded. Nowhere in the rack/camping stack
+# is fixing this up, so Japanese text goes funny.
+module POSTCleanup
+
+    class Fixer
+
+        def initialize(app)
+            @app = app
+        end
+
+        def unescape(data)
+            CGI.unescapeHTML(data)
+        end
+
+        def call(env)
+            # Hrm, is this going to go weird if there's a multiselect in a POST?
+            rq = Rack::Request.new(env)
+            if rq.post?
+                rq.params.each_pair do |k, v|
+                    rq.update_param(k, unescape(v))
+                end
+            end
+            @app.call(env)
+        end
+    end
+
+    def self.included(app)
+        app.use Fixer
+    end
+end
 
 module Members
     set :views, File.dirname(__FILE__) + '/views'
     set :secret, "notreallysecret"
     include Camping::Session
+    include POSTCleanup
 end
 
 require './members/models'
