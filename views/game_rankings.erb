@@ -11,7 +11,7 @@
     </thead>
     <tbody>
     <% @games.each do |game| %>
-        <tr><td><%== game.game.name %></td><td><%= game.plays %></td></tr>
+        <tr><td><a href="<%= R(GameViewN, game.game_id) %>"><%== game.game.name %></a></td><td><%= game.plays %></td></tr>
     <% end %>
     </tbody>
 </table>

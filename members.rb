@@ -13,11 +13,9 @@ Camping.goes :Members
 
 
 # Apparently the standard way for HTML forms to work is enctype=x-www-form-urlencoded. Nowhere in the rack/camping stack
-# is fixing this up, so Japanese text goes funny.
+# is fixing this up, so Japanese text goes funny (gets HTML entities instead of straight text).
 module POSTCleanup
-
     class Fixer
-
         def initialize(app)
             @app = app
         end
@@ -55,7 +53,6 @@ require './members/models'
 module Members::Controllers
 
     class Index < R '/'
-
         def get
             @tables = History.includes(:game).where(:active => true).order(:created_at)
             render :index
@@ -66,7 +63,17 @@ module Members::Controllers
         def get(id)
             @user = User.find(id)
             # Total hours played
-            #
+            hours = Player.where(:user_id => id).select("date_trunc('second', SUM(end_time - created_at)) AS total_time").take
+            @total_time = hours.total_time
+            # Play history
+            # SELECT players WHERE players.user_id = ?
+            # ... JOIN histories ON players.history_id = histories.id
+            # ... JOIN games ON games.id = histories.game_id
+            # ... to select out game title
+            # Hrm, join or just eager load?
+            #history = Player.joins(history: :game).where(:user_id => id)
+            history = Player.includes(history: :game).where(:user_id => id)
+            @history = history
             render :member_view
         end
     end
@@ -120,8 +127,11 @@ module Members::Controllers
             # SELECT COUNT(*) FROM History WHERE game_id = ?
             # Total number of players
             # SELECT COUNT(*) FROM History RIGHT JOIN Players ON Player.history_id = History.id WHERE game_id = ?
-            time_search = History.select("date_trunc('second', SUM(end_time - created_at)) AS total_time").where(active: false, game_id: id).take
+            time_search = History.select("date_trunc('second', SUM(end_time - created_at)) AS total_time").where(:active => false, :game_id => id).take
             @total_time = time_search.total_time
+            @play_count = History.where(:active => false, :game_id => id).count
+            # TODO: Trim out the H:m:d bit
+            @most_recent = History.where(:active => false, :game_id => id).select("date_trunc('day', MAX(created_at)) as when").take
             render :game_view
         end
     end
@@ -276,19 +286,25 @@ module Members::Controllers
             # SELECT game_id, count(game_id) FROM members_histories GROUP BY game_id ORDER BY count(game_id) desc;
             #@games = Game.
             # .count() does... something I don't want, a number comes out at the end instead of regular results
-            @games = History.select("members_histories.game_id, count(game_id) as plays").group(:game_id)
-            if @input.has_key?('date_start') && @input['date_start'].length > 0
-                @games = @games.where("members_histories.created_at >= ?", @input['date_start'])
-            end
-            if @input.has_key?('date_end') && @input['date_end'].length > 0
-                @games = @games.where("members_histories.created_at <= ?", @input['date_end'])
-            end
-            if @input.has_key?('limit')
-                @games = @games.limit(@input['limit'])
+            @games = History.includes(:game).select("members_histories.game_id, count(game_id) as plays").group(:game_id)
+            @games = @games.order("plays DESC")
+            if !(@input.has_key?('date_start') || @input.has_key?('date_end'))
+                # TODO: Plug in last month or something
+            else
+                if @input.has_key?('date_start') && @input['date_start'].length > 0
+                    @games = @games.where("members_histories.created_at >= ?", @input['date_start'])
+                end
+                if @input.has_key?('date_end') && @input['date_end'].length > 0
+                    @games = @games.where("members_histories.created_at <= ?", @input['date_end'])
+                end
             end
 
-            # TODO: Make ActiveRecord acknowledge this
-            @games.order(plays: :desc)
+            if @input.has_key?('limit')
+                @games = @games.limit(@input['limit'])
+            else
+                @games = @games.limit(15)
+            end
+
 
             render :game_rankings
         end
@@ -297,11 +313,7 @@ module Members::Controllers
     class GameFilter
         def get
             # TODO: Fit in a default filter so this doesn't take too long to load
-            # Camping seems not to deal with multi select forms - they get crunched:
-            # Query: date_start=&date_end=&games=1&games=2&games=3&games=4&filter=Filter
-            # Data: {"date_start"=>"", "date_end"=>"", "games"=>"4", "filter"=>"Filter"}
-            # Break it up with stdlib CGI instead
-
+            
             query = History.includes(:users, :game).order(:created_at).where(:active => false)
             if @input.has_key?('games')
                 query = query.where(game_id: @input['games'])
@@ -424,6 +436,10 @@ if ENV.has_key?('OPENSHIFT_POSTGRESQL_DB_USERNAME')
     #    :database => 'meeple',
     #    :username => 'user',
     #    :password => 'password')
+    #
+    Camping::Models::Base.logger = Logger.new(STDOUT)
+    Camping::Models::Base.clear_active_connections!
+
     Camping::Models::Base.establish_connection(ENV['OPENSHIFT_POSTGRESQL_DB_URL'] + '/gamelog')
 else
     print "No database set"

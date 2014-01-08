@@ -1,4 +1,6 @@
 Game: <%== @game.name %><br />
 Total play time: <%== @total_time %><br />
+Play count: <%== @play_count %><br />
+Most recently played: <%== @most_recent.when %> <br />
 <a href="http://www.boardgamegeek.com/boardgame/<%= @game.bgg_id %>">BGG Link</a><br />
 <a href="<%= R(GameEditN, @game.id) %>">Edit</a>

@@ -1,5 +1,19 @@
 User Handle: <%== @user.handle %><br />
 User Name: <%== @user.name %><br />
 Created at: <%== ts @user.created_at %><br />
-<a href="<%= R(UserEditN, @user.id) %>">Edit</a>
+<br />
+Total time played: <%== @total_time %><br />
 
+Play History:
+<table>
+    <thead>
+        <tr><th>Date</th><th>Title</th></tr>
+    </thead>
+    <tbody>
+<% @history.each do |x| %>
+    <tr><td><%== x.created_at %></td><td><%== x.history.game.name %></td></tr>
+<% end %>
+</tbody>
+</table>
+
+<a href="<%= R(UserEditN, @user.id) %>">Edit</a>

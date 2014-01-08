@@ -24,10 +24,10 @@ Entries: <%== @count %>
     </thead>
     <tbody>
     <% @games.each do |game| %>
-        <tr><td><%== game.game.name %></td><td><%= ts game.created_at %></td>
+        <tr><td><a href="<%= R(GameViewN, game.game_id) %>"><%== game.game.name %></a></td><td><%= ts game.created_at %></td>
             <td>
                 <% game.users.each do |player| %>
-                    <%== player.handle %>
+                    <a href="<%= R(UserViewN, player.id) %>"><%== player.handle %></a>
                 <% end %>
             </td></tr>
         <% end %>
